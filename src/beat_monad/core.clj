@@ -80,10 +80,12 @@
     (chain-beats [(beat flam-dur #(hat 0.5))
                   (beat rest-dur hat)])))
 
-(def notes (atom (map note [:c3 :c3 :a3 :a3 :c3 :c3 :g3 :g3])))
+(def theme [:v :vi :iv :v :iii :iv :ii :i])
+
+(def mode (atom [:major :c3]))
 
 (defn next-freq [num]
-  (midi->hz ((vec @notes) num)))
+  (midi->hz (nth (degrees->pitches theme (first @mode) (second @mode)) num)))
 
 (def drums (chain-beats [(metro-beat metro 1  hat #(beep 330))
                          (metro-beat metro 1 )
