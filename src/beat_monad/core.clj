@@ -21,6 +21,34 @@
      ((beat time) restart))
    (now)))
 
+;;; using metronome instead of explicit durations?
+
+(defn metro-beat [m beats & insts]
+  (fn [beat-num]
+    (fn [c]
+      (let [ next-beat (+ beat-num beats)]
+        (doseq [inst insts]
+          (at (m beat-num) (inst)))
+        (apply-at (m next-beat) c next-beat [])))))
+
+(def metro (metronome 400))
+
+(def metro-beats (chain-beats [(metro-beat metro 3 hat)
+                               (metro-beat metro 3 hat)
+                               (metro-beat metro 2 beep)]))
+
+(defn loop-metro [mbeat metro]
+  ((fn restart [beat-num]
+     ((mbeat beat-num) restart))
+   (metro)))
+
+(defn endless-metro-beats [beat-number]
+  ((metro-beats beat-number) endless-metro-beats))
+
+(endless-metro-beats (metro))
+
+(stop)
+
 ;;; example:
 
 (definst hat [volume 1.0]
@@ -52,21 +80,47 @@
     (chain-beats [(beat flam-dur #(hat 0.5))
                   (beat rest-dur hat)])))
 
-(def notes (atom (vec (map (comp midi->hz note) [:c3 :c3 :a3 :a3 :c3 :c3 :g3 :g3]))))
+(def notes (atom (map note [:c3 :c3 :a3 :a3 :c3 :c3 :g3 :g3])))
 
-(def beats (chain-beats [(beat 100 #(beep (@notes 0)) hat #(beep 330))
-                         (beat 100 #(beep (@notes 1)))
-                         (beat 100 #(beep (@notes 2)))
-                         (beat 100 #(beep (@notes 3)) hat)
-                         (beat 100 #(beep (@notes 4))#(beep 330))
-                         (beat 100 #(beep (@notes 5)))
-                         (beat 100 #(beep (@notes 6)) hat)
-                         (beat 100 #(beep (@notes 7)))
+(defn next-freq [num]
+  (midi->hz ((vec @notes) num)))
+
+(def drums (chain-beats [(metro-beat metro 1  hat #(beep 330))
+                         (metro-beat metro 1 )
+                         (metro-beat metro 1 )
+                         (metro-beat metro 1  hat)
+                         (metro-beat metro 1 #(beep 330))
+                         (metro-beat metro 1 )
+                         (metro-beat metro 1  hat)
+                         (metro-beat metro 1 )
                          ]))
+
+(def choon (chain-beats [(metro-beat metro 2 #(beep (next-freq 0)))
+                         (metro-beat metro 2 #(beep (next-freq 1)))
+                         (metro-beat metro 2 #(beep (next-freq 2)))
+                         (metro-beat metro 2 #(beep (next-freq 3)))
+                         (metro-beat metro 2 #(beep (next-freq 4)))
+                         (metro-beat metro 2 #(beep (next-freq 5)))
+                         (metro-beat metro 2 #(beep (next-freq 6)))
+                         (metro-beat metro 2 #(beep (next-freq 7)))
+                         ]))
+
+(defn modulate [semis]
+  (swap! notes (fn [x] (map #(+ semis %) x))))
+
+(def modulator (chain-beats [(metro-beat metro 8 #(modulate 0))
+ 
+                             #_(metro-beat metro 8 #(modulate 5))
+                             #_(metro-beat metro 8 #(modulate -4))
+                             #_(metro-beat metro 8 #(modulate -2))]))
 
 (play-beat beats)
 
-(loop-beat beats) 
+(defn play-shit []
+  (do
+    (loop-metro drums metro)
+    (loop-metro choon metro)
+    (loop-metro modulator metro)))
 
 (play-beat (chain-beats [(beat 300 hat)
                          (flam 300)
@@ -94,27 +148,6 @@
 
 ;;(endless-beats (now))
 
-;;; using metronome instead of explicit durations?
-
-(defn metro-beat [m beats inst]
-  (fn [beat-num]
-    (fn [c]
-      (let [ next-beat (+ beat-num beats)]
-           (at (m beat-num) (inst))
-           (apply-at (m next-beat) c next-beat [])))))
-
-(def metro (metronome 400))
-
-(def metro-beats (chain-beats [(metro-beat metro 3 hat)
-                               (metro-beat metro 3 hat)
-                               (metro-beat metro 2 beep)]))
-
-(defn endless-metro-beats [beat-number]
-  ((metro-beats beat-number) endless-metro-beats))
-
-(endless-metro-beats (metro))
-
-(stop)
 
 ;;; metronomes in a time-passing rather than beat-passing style
 
