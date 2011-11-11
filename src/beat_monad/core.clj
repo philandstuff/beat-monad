@@ -71,7 +71,7 @@
                          (metro-beat metro 2 #(beep (next-freq 7)))
                          ]))
 
-(defn play-shit []
+(defn play-all []
   (do
     (loop-metro drums metro)
     (loop-metro choon metro)))
